@@ -23,7 +23,6 @@ f_message(){
 }
 
 check_vod_status(){
-	vod_status=0;
         pid_gst=`ps -A | grep gst-launch-1.0 | grep -v "grep" | grep -v vlc. | awk '{print $1}' | head -n 1`
         pid_smarthome=`ps -A | grep smarthome | grep -v "grep" | grep -v vlc. | awk '{print $1}' | head -n 1`
         pid_rtsp=`ps -A | grep testOnDemand | grep -v "grep" | grep -v vlc. | awk '{print $1}' | head -n 1`
@@ -35,12 +34,11 @@ check_vod_status(){
                 cat /proc/${pid_gst}/cmdline ; echo ""
                 cat /proc/${pid_smarthome}/cmdline ; echo ""
                 cat /proc/${pid_rtsp}/cmdline ; echo ""
+		return 1
         else
 		echo "ERROR! Restarting service..."
-		vod_status=1;
+		return 0
         fi
-
-	echo $vod_status
 }
 
 create_fifo(){
@@ -63,7 +61,7 @@ stop_gst(){
 	if ! check_vod_status ;
 	then
 		echo "ERROR! Service was not stoped... trying again"
-		killall testOnDemandRTSPServer gst-launch-1.0 smarthome
+		sudo killall testOnDemandRTSPServer gst-launch-1.0 smarthome
 		sleep 1
 	fi
 	rm $SRC_NAME $DST_NAME
