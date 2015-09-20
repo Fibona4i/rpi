@@ -1,0 +1,102 @@
+#!/bin/bash
+# /etc/init.d/vod
+### BEGIN INIT INFO
+# Provides:          Smart Home: VoD
+# Required-Start:    $networking
+# Required-Stop:     $networking
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Smart Home
+# Description:       Start VoD RTSP Server
+### END INIT INFO
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH_NAME_MAIN=/home/pi/smart
+SRC_NAME=$PATH_NAME_MAIN/src.ts
+DST_NAME=$PATH_NAME_MAIN/stream.ts
+PROG_MAIN=$PATH_NAME_MAIN/smarthome
+RTSP_SERVER=$PATH_NAME_MAIN/testOnDemandRTSPServer
+#CAM_NUMB=$(ls /dev/video* | grep -o [0-9] | head -n 1)
+CAM=$(ls /dev/video* | head -n 1)
+
+f_message(){
+        echo "[+] $1"
+}
+
+check_vod_status(){
+	vod_status=0;
+        pid_gst=`ps -A | grep gst-launch-1.0 | grep -v "grep" | grep -v vlc. | awk '{print $1}' | head -n 1`
+        pid_smarthome=`ps -A | grep smarthome | grep -v "grep" | grep -v vlc. | awk '{print $1}' | head -n 1`
+        pid_rtsp=`ps -A | grep testOnDemand | grep -v "grep" | grep -v vlc. | awk '{print $1}' | head -n 1`
+
+        if [ -n "$pid_gst" ] && [ -n "$pid_smarthome" ] && [ -n "$pid_rtsp" ];
+        then
+                f_message "streamer is running with pids ${pid_gst} ${pid_smarthome} ${pid_rtsp}"
+                f_message "streamer was started with the following command line"
+                cat /proc/${pid_gst}/cmdline ; echo ""
+                cat /proc/${pid_smarthome}/cmdline ; echo ""
+                cat /proc/${pid_rtsp}/cmdline ; echo ""
+        else
+		echo "ERROR! Restarting service..."
+		vod_status=1;
+        fi
+
+	echo $vod_status
+}
+
+create_fifo(){
+	rm $SRC_NAME $DST_NAME
+	mkfifo $SRC_NAME $DST_NAME
+}
+
+start_gst(){
+	create_fifo
+	$PROG_MAIN $SRC_NAME $DST_NAME > /dev/null 2>&1 &
+	gst-launch-1.0 v4l2src device=$CAM ! 'video/x-raw,width=640,height=480,framerate=15/1' ! clockoverlay time-format="%Y/%m/%d %H:%M:%S" ! omxh264enc target-bitrate=512000 control-rate=3 interval-intraframes=7 ! muxout. alsasrc device=hw:1,0 ! 'audio/x-raw,format=(string)S16LE,rate=(int)16000,channels=(int)1' ! queue ! audioconvert ! voaacenc bitrate=32273 ! aacparse ! muxout. mpegtsmux name=muxout ! queue ! filesink location=$SRC_NAME > /dev/null 2>&1 &
+	sleep 0.5
+	$RTSP_SERVER > /dev/null 2>&1 &
+	sleep 0.5
+}
+
+stop_gst(){
+	killall testOnDemandRTSPServer gst-launch-1.0 smarthome
+	sleep 1
+	if ! check_vod_status ;
+	then
+		echo "ERROR! Service was not stoped... trying again"
+		killall testOnDemandRTSPServer gst-launch-1.0 smarthome
+		sleep 1
+	fi
+	rm $SRC_NAME $DST_NAME
+}
+
+# Carry out specific functions when asked to by the system
+case "$1" in
+        start)
+                f_message "Starting streamer"
+		start_gst
+                f_message "streamer started"
+                ;;
+        stop)
+                f_message "Stopping streamer"
+                stop_gst
+                f_message "streamer stopped"
+                ;;
+        restart)
+                f_message "Restarting service: streamer"
+                service vod stop
+		service vod start
+		f_message "Restarted service: streamer"
+                ;;
+        status)
+		if check_vod_status ;
+		then
+			service vod restart
+		fi
+                ;;
+        *)
+                f_message "Usage: $0 {start|stop|status|restart}"
+                exit 1
+                ;;
+esac
+
+exit 0
