@@ -8,103 +8,116 @@
 #include <signal.h>
 #include <unistd.h>
 
+#define DEBUG 1
 #define BUFFER 65536
+
+#define debug_print(fmt, ...) \
+	do { if (DEBUG) fprintf(stderr, "%s:%d:%s(): " fmt, __FILE__, \
+		__LINE__, __func__, __VA_ARGS__); } while (0)
+
+enum ERROR_TYPE
+{
+    NO_ERR = 0,
+    ERR = 1,
+    ERR_ARG = 2,
+    ERR_OPEN_FILE = 3,
+    ERR_NO_FIFO = 4,
+    ERR_READ = 5,
+    ERR_WRITE = 6,
+};
+
+static int is_fifo(int file_fd)
+{
+    struct stat status;
+
+    if(fstat(file_fd, &status) == -1)
+	return 0;
+
+    if(!S_ISFIFO(status.st_mode))
+	return 0;
+
+    return 1;
+}
 
 int main(int argc, char *argv[])
 {
-    int readfd, writefd, tmp;
-    char *fifonam;
-    char *fifonam2;
+    char *fifo_src, *fifo_dst;
     char buffer[BUFFER + 1];
     ssize_t r_bytes, w_bytes;
+    int srcfd_read, dstfd_write, dstfd_read;
     int iter = 0;
+    enum ERROR_TYPE ret = NO_ERR;
+
+    if(argc != 3)
+    {
+        printf("Usage:\n nameprog fifo_src fifo_dst\n");
+	ret = ERR_ARG;
+	goto Exit;
+    }
+    fifo_src = argv[1];
+    fifo_dst = argv[2];
 
     signal(SIGPIPE, SIG_IGN);
 
-    if(3!=argc)
+    srcfd_read = open(fifo_src, O_RDONLY);
+    if(srcfd_read == -1)
     {
-        printf("Usage:\n nameprog fifo1 fifo2\n");
-        exit(EXIT_FAILURE);
-    }
-    fifonam = argv[1];
-    fifonam2 = argv[2];
-
-    readfd = open(fifonam, O_RDONLY);
-    if(-1==readfd)
-    {
-        perror("ftee: readfd: open()");
-        //printf("ftee: readfd: open(%s)\n", fifonam);
-        exit(EXIT_FAILURE);
+        perror("ftee: srcfd_read: open()");
+        ret = ERR_OPEN_FILE;
+	goto Exit;
     }
 
-    tmp = open(fifonam2, O_RDONLY | O_NONBLOCK);
-    if(-1==tmp)
+    dstfd_read = open(fifo_dst, O_RDONLY | O_NONBLOCK);
+    if(dstfd_read == -1)
     {
-        perror("ftee: tmp: open()");
-        //printf("ftee: tmp: open(%s)\n", fifonam2);
-	close(readfd);
-        exit(EXIT_FAILURE);
+        perror("ftee: dstfd_read: open()");
+	ret = ERR_OPEN_FILE;
+	goto Exit_1;
     }
 
-    writefd = open(fifonam2, O_WRONLY | O_NONBLOCK);
-    if(-1==writefd)
+    dstfd_write = open(fifo_dst, O_WRONLY | O_NONBLOCK);
+    if(dstfd_write == -1)
     {
-        perror("ftee: writefd: open()");
-        //printf("ftee: writefd: open(%s)\n", fifonam2);
-	close(readfd);
-	close(tmp);
-        exit(EXIT_FAILURE);
-    }
-#if 0
-    struct stat status;
-    if(-1==fstat(readfd, &status))
-    {
-        perror("ftee: fstat");
-        close(readfd);
-        exit(EXIT_FAILURE);
+        perror("ftee: dstfd_write: open()");
+	ret = ERR_OPEN_FILE;
+	goto Exit_2;
     }
 
-    if(!S_ISFIFO(status.st_mode))
+    if (!is_fifo(srcfd_read) || !is_fifo(dstfd_write))
     {
-        printf("ftee: %s in not a fifo!\n", fifonam);
-        close(readfd);
-        exit(EXIT_FAILURE);
+        perror("some of files is not a fifo!\n");
+	ret = ERR_NO_FIFO;
+	goto Exit_3;
     }
-
-    writefd = open(fifonam, O_WRONLY | O_NONBLOCK);
-    if(-1==writefd)
-    {
-        perror("ftee: writefd: open()");
-        close(readfd);
-        exit(EXIT_FAILURE);
-    }
-
-    close(readfd);
-#endif
 
     while(1)
     {
-	r_bytes = read(readfd, buffer, BUFFER);
+	r_bytes = read(srcfd_read, buffer, BUFFER);
         if (r_bytes < 0 && errno == EINTR)
             continue;
         if (r_bytes <= 0)
+	{
+	    ret = ERR_READ;
             break;
+	}
 
-	w_bytes = write(writefd, buffer, r_bytes);
+	w_bytes = write(dstfd_write, buffer, r_bytes);
 	if (w_bytes == -1 && iter++)
 	{
-	    read(tmp, buffer, BUFFER);
-	    //bytes = read(tmp, buffer, BUFFER);
-	    //printf("droped = %d\n", bytes);
+	    read(dstfd_read, buffer, BUFFER);
 	    iter = 0;
+	    debug_print("droped = %d\n", read(dstfd_read, buffer, BUFFER));
 	}
-	//if (r_bytes != w_bytes)
-	    //printf("rbytes = %d, w_bytes = %d\n", r_bytes, w_bytes);
+	if (DEBUG && r_bytes != w_bytes)
+	    debug_print("rbytes = %d, w_bytes = %d\n", r_bytes, w_bytes);
     }
 
-    printf("Exit\n");
-    close(writefd);
-    close(readfd);
-    close(tmp);
-    return(0);
+Exit_3:
+    close(dstfd_write);
+Exit_2:
+    close(dstfd_read);
+Exit_1:
+    close(srcfd_read);
+Exit:
+    return ret;
 }
