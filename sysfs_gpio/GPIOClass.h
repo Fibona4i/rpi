@@ -14,6 +14,12 @@
 #include <fcntl.h>
 
 using namespace std;
+
+#define GPIO_IN "in"
+#define GPIO_OUT "out"
+#define HIGH "1"
+#define LOW "0"
+
 /* GPIO Class
  * Purpose: Each object instatiated from this class will control a GPIO pin
  * The GPIO pin number must be passed to the overloaded class constructor
@@ -21,23 +27,23 @@ using namespace std;
 class GPIOClass
 {
 public:
-	GPIOClass();
-	GPIOClass(string gnum);
-	~GPIOClass();
+    GPIOClass();
+    GPIOClass(string gnum);
+    ~GPIOClass();
     int setdir_gpio(string dir);
     int setval_gpio(string val);
     int getval_gpio(string& val);
     string get_gpionum();
+    int get_filefd();
 private:
     int export_gpio();
-	int unexport_gpio();
-	
-	int valuefd;
-	int directionfd;
-	int exportfd;
-	int unexportfd;
-	string gpionum;
-	
+    int unexport_gpio();
+
+    int valuefd;
+    int directionfd;
+    int exportfd;
+    int unexportfd;
+    string gpionum;
 };
 
 #endif

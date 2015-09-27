@@ -7,14 +7,14 @@ using namespace std;
 GPIOClass::GPIOClass():valuefd(-1),directionfd(-1),exportfd(-1),unexportfd(-1),gpionum(DEFAULT_PORT)
 {
         //GPIO4 is default
-	this->unexport_gpio();
+	this->unexport_gpio(); //close if it is already opened
 	this->export_gpio();
 }
 
 GPIOClass::GPIOClass(string gnum):valuefd(-1),directionfd(-1),exportfd(-1),unexportfd(-1),gpionum(gnum)
 {
 	//Instatiate GPIOClass object for GPIO pin number "gnum"
-	this->unexport_gpio();
+	this->unexport_gpio(); //close if it is already opened
 	this->export_gpio();
 }
 
@@ -101,7 +101,7 @@ int GPIOClass::setdir_gpio(string dir)
 	}
 		
 	if (dir.compare("in") != 0 && dir.compare("out") != 0 ) {
-		fprintf(stderr, "Invalid direction value. Should be \"in\" or \"out\". \n");
+		perror("Invalid direction value. Should be \"in\" or \"out\".");
 		exit(1);
 	}
 		
@@ -133,7 +133,7 @@ int GPIOClass::setval_gpio(string val)
 	}
 		
 	if (val.compare("1") != 0 && val.compare("0") != 0 ) {
-		fprintf(stderr, "Invalid  value. Should be \"1\" or \"0\". \n");
+		perror("Invalid  value. Should be \"1\" or \"0\".");
 		exit(1);
 	}
 		
@@ -176,7 +176,7 @@ int GPIOClass::getval_gpio(string& val){
 	val = string(buff);
 	
 	if (val.compare("1") != 0 && val.compare("0") != 0 ) {
-		fprintf(stderr, "Invalid  value read. Should be \"1\" or \"0\". \n");
+		perror("Invalid  value read. Should be \"1\" or \"0\".");
 		exit(1);
 	}
 	
@@ -191,4 +191,8 @@ int GPIOClass::getval_gpio(string& val){
 
 string GPIOClass::get_gpionum(){
 	return this->gpionum;
+}
+
+int GPIOClass::get_filefd(){
+	return this->valuefd;
 }

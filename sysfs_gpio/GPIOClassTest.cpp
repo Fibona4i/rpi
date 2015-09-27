@@ -1,20 +1,15 @@
 #include "GPIOClass.h"
- 
-using namespace std;
+#include "GPIORpi2.h"
 
-#define GPIO_IN "in"
-#define GPIO_OUT "out"
 #define SEC_US 1000000
-#define HIGH "1"
-#define LOW "0"
 
 int main (void)
 {
  
     string inputstate;
     int i = 0;
-    GPIOClass* gpio_out = new GPIOClass("4"); //create new GPIO object to be attached to  gpio_out
-    GPIOClass* gpio_in = new GPIOClass("17"); //create new GPIO object to be attached to  gpio_in
+    GPIOClass* gpio_out = new GPIOClass(RPI2_GPIO_7); //create new GPIO object to be attached to  gpio_out
+    GPIOClass* gpio_in = new GPIOClass(RPI2_GPIO_11); //create new GPIO object to be attached to  gpio_in
  
     cout << " GPIO pins exported" << endl;
  
