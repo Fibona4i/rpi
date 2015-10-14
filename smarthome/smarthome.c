@@ -17,7 +17,8 @@
 #define DEBUG 0
 #define BUFFER 65536
 #define TIMEOUT_POLL_MS 5000
-#define PATH_SIZE 120
+#define PATH_SIZE 128
+#define NAME_SIZE 64
 
 #define debug_print(fmt, ...) \
 	do { if (DEBUG) fprintf(stderr, "%s:%d:%s(): " fmt, __FILE__, \
@@ -104,7 +105,7 @@ int main(int argc, char *argv[])
     int srcfd_read, dstfd_write, dstfd_read;
     int iter = 0;
     enum ERROR_TYPE ret = NO_ERR;
-    char file_name[PATH_SIZE], is_active = 0;
+    char file_name[NAME_SIZE] = {}, path[PATH_SIZE] = {}, is_active = 0;
 
     if(argc != 4)
     {
@@ -178,10 +179,11 @@ int main(int argc, char *argv[])
 	if (GPIO_STAT && !is_active)
 	{
 	    time_t t = time(0);
-	    strftime(file_name, PATH_SIZE, "/CAM_%Y-%m-%d_%H:%M:%S.ts", localtime(&t));
-	    strcat(file_name, video_dir);
+	    strftime(file_name, NAME_SIZE, "CAM_%Y-%m-%d_%H:%M:%S.ts", localtime(&t));
+	    strcpy(path, video_dir);
+	    strcat(path, file_name);
 
-	    myfile.open(file_name);
+	    myfile.open(path);
 	    if (myfile.is_open())
 		is_active = 1;
 	}
