@@ -17,6 +17,10 @@ using namespace std;
 
 #define GPIO_IN "in"
 #define GPIO_OUT "out"
+#define GPIO_EDGE_NONE "none"
+#define GPIO_EDGE_RISING "rising"
+#define GPIO_EDGE_FALLING "falling"
+#define GPIO_EDGE_BOTH "both"
 #define HIGH "1"
 #define LOW "0"
 
@@ -31,6 +35,7 @@ public:
     GPIOClass(string gnum);
     ~GPIOClass();
     int setdir_gpio(string dir);
+    int setedge_gpio(string dir);
     int setval_gpio(string val);
     int getval_gpio(string& val);
     string get_gpionum();

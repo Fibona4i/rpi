@@ -26,11 +26,11 @@ GPIOClass::~GPIOClass()
 
 int GPIOClass::export_gpio()
 {
-	
 	string numStr;
 	stringstream ss;
 	int statusVal = -1;
 	string exportStr = "/sys/class/gpio/export";
+	string ValStr = "/sys/class/gpio/gpio" + this->gpionum + "/value";
 
 	this->exportfd = statusVal = open(exportStr.c_str(),  O_WRONLY|O_SYNC);
 	if (statusVal < 0){
@@ -40,7 +40,6 @@ int GPIOClass::export_gpio()
 
 	ss << this->gpionum;
 	numStr = ss.str();
-	cout << numStr << "Text" << endl;
 
 	statusVal = write(this->exportfd, numStr.c_str(), numStr.length());
 	if (statusVal < 0){
@@ -54,6 +53,12 @@ int GPIOClass::export_gpio()
         	exit(1);
 	}
 
+	this->valuefd = statusVal = open(ValStr.c_str(), O_RDWR|O_SYNC);
+	if (statusVal < 0){
+		perror("could not open SYSFS GPIO value device");
+        	exit(1);
+	}
+
 	return statusVal;
 }
 
@@ -63,6 +68,11 @@ int GPIOClass::unexport_gpio()
 	stringstream ss;
 	int statusVal = -1;
 	string unexportStr = "/sys/class/gpio/unexport";
+
+	if (this->valuefd != -1 && close(this->valuefd)){
+		perror("could not close SYSFS GPIO value device");
+        	//exit(1);
+	}
 
 	this->unexportfd = statusVal = open(unexportStr.c_str(),  O_WRONLY|O_SYNC);
 	if (statusVal < 0){
@@ -120,17 +130,42 @@ int GPIOClass::setdir_gpio(string dir)
 	return statusVal;
 }
 
+int GPIOClass::setedge_gpio(string edge)
+{
+	int edge_fd, statusVal = -1;
+	string setedgeStr ="/sys/class/gpio/gpio" + this->gpionum + "/edge";
+
+	edge_fd = statusVal = open(setedgeStr.c_str(), O_WRONLY|O_SYNC); // open edge file for gpio
+	if (statusVal < 0){
+		perror("could not open SYSFS GPIO edge device");
+       		exit(1);
+	}
+		
+	if (edge.compare(GPIO_EDGE_NONE) != 0 && edge.compare(GPIO_EDGE_RISING) != 0 &&
+		edge.compare(GPIO_EDGE_FALLING) != 0 &&	edge.compare(GPIO_EDGE_BOTH) != 0)
+	{
+		perror("Invalid edge value. Should be \"none\", \"rising\" or \"falling\".");
+		exit(1);
+	}
+		
+	statusVal = write(edge_fd, edge.c_str(), edge.length());
+	if (statusVal < 0) {
+		perror("could not write to SYSFS GPIO edge device");
+        	exit(1);
+	}
+
+	statusVal = close(edge_fd);
+	if (statusVal < 0) {
+		perror("could not close SYSFS GPIO edge device");
+        	exit(1);
+	}
+
+	return statusVal;
+}
 
 int GPIOClass::setval_gpio(string val)
 {
 	int statusVal = -1;
-	string setValStr = "/sys/class/gpio/gpio" + this->gpionum + "/value";
-	
-	this->valuefd = statusVal = open(setValStr.c_str(), O_WRONLY|O_SYNC);
-	if (statusVal < 0){
-		perror("could not open SYSFS GPIO value device");
-        	exit(1);
-	}
 		
 	if (val.compare("1") != 0 && val.compare("0") != 0 ) {
 		perror("Invalid  value. Should be \"1\" or \"0\".");
@@ -143,49 +178,27 @@ int GPIOClass::setval_gpio(string val)
         	exit(1);
 	}
 	
-	statusVal = close(this->valuefd);
-	if (statusVal < 0){
-		perror("could not close SYSFS GPIO value device");
-        	exit(1);
-	}
-
 	return statusVal;
 }
 
 
 int GPIOClass::getval_gpio(string& val){
-
-	string getValStr = "/sys/class/gpio/gpio" + this->gpionum + "/value";
 	char buff[10];
 	int statusVal = -1;
-
-	this->valuefd = statusVal = open(getValStr.c_str(), O_RDONLY|O_SYNC);
-	if (statusVal < 0){
-		perror("could not open SYSFS GPIO value device");
-        	exit(1);
-	}
 
 	statusVal = read(this->valuefd, &buff, 1);
 	if (statusVal < 0){
 		perror("could not read SYSFS GPIO value device");
         	exit(1);
 	}
-	
 	buff[1]='\0';
 	
 	val = string(buff);
-	
 	if (val.compare("1") != 0 && val.compare("0") != 0 ) {
 		perror("Invalid  value read. Should be \"1\" or \"0\".");
 		exit(1);
 	}
 	
-	statusVal = close(this->valuefd);
-	if (statusVal < 0){
-		perror("could not close SYSFS GPIO value device");
-        	exit(1);
-	}
-
 	return statusVal;
 }
 

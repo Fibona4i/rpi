@@ -1,9 +1,9 @@
 TARGET=smarthome
-OBJECTS=smarthome.o
+OBJECTS=smarthome.o ../sysfs_gpio/GPIOClass.o
 
 CC=g++
 CFLAGS=-Wall -Werror
-LDFLAGS=
+LDFLAGS=-lpthread
 
 ${TARGET}: ${OBJECTS}
 	${CC} $^ ${LDFLAGS} -o $@
