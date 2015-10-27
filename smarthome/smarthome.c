@@ -41,11 +41,12 @@ enum ERROR_TYPE
     ERR_ALLOC = 8,
 };
 
-typedef struct {
+struct ring_buf {
     char *head;
     char *curr;
     unsigned int full_size;
-} Cycle_buf;
+    struct ring_buf *next;
+};
 
 struct fifo_free_ctx {
     int fd;
@@ -134,11 +135,11 @@ int main(int argc, char *argv[])
     char *fifo_src, *fifo_dst, *video_dir;
     char buffer[BUFFER + 1];
     ssize_t r_bytes;
-    int srcfd_read, dstfd_write, v_buf_iter = -1;
+    int srcfd_read, dstfd_write, i;
+    struct ring_buf *vbuf, *first_vbuf, *tmp_vbuf;
+    time_t t, prev_t = 0;
     enum ERROR_TYPE ret = NO_ERR;
     char file_name[NAME_SIZE] = {}, path[PATH_SIZE] = {}, is_active = 0;
-    Cycle_buf vbuf[V_DURATION] = {};
-    time_t t, prev_t = 0;
     struct fifo_free_ctx fifo_ctx = {};
 
     if(argc != 4)
@@ -201,15 +202,24 @@ int main(int argc, char *argv[])
     /* init video pre-buffer */
     for (int i=0; i < V_DURATION; i++)
     {
-	vbuf[i].full_size = SEC_VIDEO_SIZE;
-	if ((vbuf[i].head = vbuf[i].curr = (char *)malloc(SEC_VIDEO_SIZE)))
-	    continue;
+	vbuf = (struct ring_buf *)malloc(sizeof(struct ring_buf));
+	vbuf->head = vbuf->curr = (char *)malloc(SEC_VIDEO_SIZE);
+	vbuf->full_size = SEC_VIDEO_SIZE;
+	vbuf->next = tmp_vbuf;
+	tmp_vbuf = vbuf;
 
-	perror("can not alloc memory for video pre-buffer\n");
-	ret = ERR_ALLOC;
-	goto Exit_4;
+	if (!vbuf || !vbuf->head)
+	{
+	    perror("can not alloc memory for video pre-buffer\n");
+	    ret = ERR_ALLOC;
+	    goto Exit_4;
+	}
+
+	if (!i)
+	    first_vbuf = vbuf;
     }
-
+    first_vbuf->next = vbuf;
+    
     while(1)
     {
 	r_bytes = read(srcfd_read, buffer, BUFFER);
@@ -227,15 +237,14 @@ int main(int argc, char *argv[])
 	if ((t = time(0)) != prev_t)
 	{
 	    prev_t = t;
-	    if (++v_buf_iter >= V_DURATION)
-		    v_buf_iter = 0;
-	    vbuf[v_buf_iter].curr = vbuf[v_buf_iter].head;
+	    vbuf = vbuf->next;
+	    vbuf->curr = vbuf->head;
 	}
 	
-	if ((vbuf[v_buf_iter].curr - vbuf[v_buf_iter].head + r_bytes) < vbuf[v_buf_iter].full_size)
+	if ((vbuf->curr - vbuf->head + r_bytes) < vbuf->full_size)
 	{
-	    memcpy(vbuf[v_buf_iter].curr, buffer, r_bytes);
-	    vbuf[v_buf_iter].curr += r_bytes;
+	    memcpy(vbuf->curr, buffer, r_bytes);
+	    vbuf->curr += r_bytes;
 	}
 	else
 	{
@@ -255,12 +264,8 @@ int main(int argc, char *argv[])
 		break;
 	    is_active = 1;
 
-	    for (int i=0, j=v_buf_iter; i < V_DURATION; i++)
-	    {
-		if (++j >= V_DURATION)
-		    j = 0;
-		myfile.write(vbuf[j].head, vbuf[j].curr - vbuf[j].head);
-	    }
+	    for (i=0, tmp_vbuf=vbuf->next; tmp_vbuf != vbuf->next || !i++; tmp_vbuf=tmp_vbuf->next)
+		myfile.write(tmp_vbuf->head, tmp_vbuf->curr - tmp_vbuf->head);
 	}
 	else if (!GPIO_STAT && is_active)
 	{
@@ -275,8 +280,11 @@ int main(int argc, char *argv[])
     }
 
 Exit_4:
-    for (int i=0; i < V_DURATION; i++)
-	free(vbuf[i].head);
+    for (i=0, tmp_vbuf=vbuf->next; tmp_vbuf != vbuf->next || !i++; tmp_vbuf=tmp_vbuf->next)
+    {
+	free(tmp_vbuf->head);
+	free(tmp_vbuf);
+    }
 Exit_3:
     close(dstfd_write);
 Exit_2:
