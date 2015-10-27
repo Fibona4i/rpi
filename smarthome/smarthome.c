@@ -16,9 +16,11 @@
 
 #define DEBUG 0
 #define BUFFER 65536
-#define TIMEOUT_POLL_MS 5000
+#define V_DURATION 10
+#define TIMEOUT_POLL_MS (V_DURATION*1000)
 #define PATH_SIZE 128
 #define NAME_SIZE 64
+#define SEC_VIDEO_SIZE (1*1024*1024)
 
 #define debug_print(fmt, ...) \
 	do { if (DEBUG) fprintf(stderr, "%s:%d:%s(): " fmt, __FILE__, \
@@ -36,6 +38,18 @@ enum ERROR_TYPE
     ERR_READ = 5,
     ERR_WRITE = 6,
     ERR_PTHREAD = 7,
+    ERR_ALLOC = 8,
+};
+
+typedef struct {
+    char *head;
+    char *curr;
+    unsigned int full_size;
+} Cycle_buf;
+
+struct fifo_free_ctx {
+    int fd;
+    int need_clean;
 };
 
 static int is_fifo(int file_fd)
@@ -95,17 +109,37 @@ void *gpio_read(void *data)
     return NULL;
 }
 
+void *fifo_free(void *data)
+{
+    char buffer[BUFFER + 1];
+    struct fifo_free_ctx *fifo_ctx = (struct fifo_free_ctx *)data;
+
+    while(1)
+    {
+	if (fifo_ctx->need_clean)
+	{
+            read(fifo_ctx->fd, buffer, BUFFER);
+	    fifo_ctx->need_clean = 0;
+	}
+	usleep(100*1000);
+    }
+
+    return NULL;
+}
+
 int main(int argc, char *argv[])
 {
-    pthread_t thread_gpio_r;
+    pthread_t thread_gpio_r, clean_fifo;
     ofstream myfile;
     char *fifo_src, *fifo_dst, *video_dir;
     char buffer[BUFFER + 1];
-    ssize_t r_bytes, w_bytes;
-    int srcfd_read, dstfd_write, dstfd_read;
-    int iter = 0;
+    ssize_t r_bytes;
+    int srcfd_read, dstfd_write, v_buf_iter = -1;
     enum ERROR_TYPE ret = NO_ERR;
     char file_name[NAME_SIZE] = {}, path[PATH_SIZE] = {}, is_active = 0;
+    Cycle_buf vbuf[V_DURATION] = {};
+    time_t t, prev_t = 0;
+    struct fifo_free_ctx fifo_ctx = {};
 
     if(argc != 4)
     {
@@ -127,15 +161,15 @@ int main(int argc, char *argv[])
 	goto Exit;
     }
 
-    dstfd_read = open(fifo_dst, O_RDONLY | O_NONBLOCK);
-    if(dstfd_read == -1)
+    fifo_ctx.fd = open(fifo_dst, O_RDONLY | O_NONBLOCK);
+    if(fifo_ctx.fd == -1)
     {
-        perror("ftee: dstfd_read: open()");
+        perror("ftee: fifo_ctx.fd: open()");
 	ret = ERR_OPEN_FILE;
 	goto Exit_1;
     }
 
-    dstfd_write = open(fifo_dst, O_WRONLY | O_NONBLOCK);
+    dstfd_write = open(fifo_dst, O_WRONLY | O_NONBLOCK | O_ASYNC | O_NOATIME);
     if(dstfd_write == -1)
     {
         perror("ftee: dstfd_write: open()");
@@ -157,6 +191,25 @@ int main(int argc, char *argv[])
 	goto Exit_3;
     }
 
+    if(pthread_create(&clean_fifo, NULL, fifo_free, &fifo_ctx))
+    {
+	perror("can not create thread fifo_free()\n");
+	ret = ERR_PTHREAD;
+	goto Exit_3;
+    }
+
+    /* init video pre-buffer */
+    for (int i=0; i < V_DURATION; i++)
+    {
+	vbuf[i].full_size = SEC_VIDEO_SIZE;
+	if ((vbuf[i].head = vbuf[i].curr = (char *)malloc(SEC_VIDEO_SIZE)))
+	    continue;
+
+	perror("can not alloc memory for video pre-buffer\n");
+	ret = ERR_ALLOC;
+	goto Exit_4;
+    }
+
     while(1)
     {
 	r_bytes = read(srcfd_read, buffer, BUFFER);
@@ -168,24 +221,46 @@ int main(int argc, char *argv[])
             break;
 	}
 
-	w_bytes = write(dstfd_write, buffer, r_bytes);
-	if (w_bytes == -1 && iter++)
+	if (!fifo_ctx.need_clean && write(dstfd_write, buffer, r_bytes) == -1)
+	    fifo_ctx.need_clean = 1;
+
+	if ((t = time(0)) != prev_t)
 	{
-	    read(dstfd_read, buffer, BUFFER);
-	    iter = 0;
-	    debug_print("droped = %d\n", read(dstfd_read, buffer, BUFFER));
+	    prev_t = t;
+	    if (++v_buf_iter >= V_DURATION)
+		    v_buf_iter = 0;
+	    vbuf[v_buf_iter].curr = vbuf[v_buf_iter].head;
+	}
+	
+	if ((vbuf[v_buf_iter].curr - vbuf[v_buf_iter].head + r_bytes) < vbuf[v_buf_iter].full_size)
+	{
+	    memcpy(vbuf[v_buf_iter].curr, buffer, r_bytes);
+	    vbuf[v_buf_iter].curr += r_bytes;
+	}
+	else
+	{
+	    perror("video bitrade is too high. Can't save pre-buffer stream\n");
+	    ret = ERR;
+	    goto Exit_4;
 	}
 
 	if (GPIO_STAT && !is_active)
 	{
-	    time_t t = time(0);
 	    strftime(file_name, NAME_SIZE, "CAM_%Y-%m-%d_%H:%M:%S.ts", localtime(&t));
 	    strcpy(path, video_dir);
 	    strcat(path, file_name);
 
-	    myfile.open(path);
-	    if (myfile.is_open())
-		is_active = 1;
+	    myfile.open(path, ios::out | ios::binary);
+	    if (!myfile.is_open())
+		break;
+	    is_active = 1;
+
+	    for (int i=0, j=v_buf_iter; i < V_DURATION; i++)
+	    {
+		if (++j >= V_DURATION)
+		    j = 0;
+		myfile.write(vbuf[j].head, vbuf[j].curr - vbuf[j].head);
+	    }
 	}
 	else if (!GPIO_STAT && is_active)
 	{
@@ -197,15 +272,15 @@ int main(int argc, char *argv[])
 	{
 	    myfile.write(buffer, r_bytes);
 	}
-
-	if (DEBUG && r_bytes != w_bytes)
-	    debug_print("rbytes = %d, w_bytes = %d\n", r_bytes, w_bytes);
     }
 
+Exit_4:
+    for (int i=0; i < V_DURATION; i++)
+	free(vbuf[i].head);
 Exit_3:
     close(dstfd_write);
 Exit_2:
-    close(dstfd_read);
+    close(fifo_ctx.fd);
 Exit_1:
     close(srcfd_read);
 Exit:
