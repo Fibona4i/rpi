@@ -461,7 +461,17 @@ function db_upload_file
     FILE_DAY="$(echo ${FILE_DATA:12:2})"
     FILE_DST="/$FILE_YEAR/$FILE_MONTH/$FILE_DAY/$FILE_DST"
     FILE_DIR=$(echo $FILE_SRC | sed 's/CAM.*//')
-    mkdir -p $FILE_DIR/../$VIDEO_SYNC_DIR/$FILE_YEAR/$FILE_MONTH/$FILE_DAY
+    sudo mkdir -p $FILE_DIR/../$VIDEO_SYNC_DIR/$FILE_YEAR/$FILE_MONTH/$FILE_DAY
+    sudo chmod 555 $FILE_DIR/../$VIDEO_SYNC_DIR
+    sudo chmod 555 $FILE_DIR/../$VIDEO_SYNC_DIR/$FILE_YEAR
+    sudo chmod 555 $FILE_DIR/../$VIDEO_SYNC_DIR/$FILE_YEAR/$FILE_MONTH
+    sudo chmod 555 $FILE_DIR/../$VIDEO_SYNC_DIR/$FILE_YEAR/$FILE_MONTH/$FILE_DAY
+
+    echo "TEST"
+    echo $FILE_DIR
+    echo $FILE_SRC
+    echo $($FILE_DIR/../$VIDEO_SYNC_DIR/$FILE_YEAR/$FILE_MONTH/$FILE_DAY)
+    echo "END TEST"
 
     shopt -s nocasematch
 
