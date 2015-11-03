@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
     struct ring_buf *vbuf, *first_vbuf, *tmp_vbuf;
     time_t t, prev_t = 0;
     enum ERROR_TYPE ret = NO_ERR;
-    char file_name[NAME_SIZE] = {}, path[PATH_SIZE] = {}, is_active = 0;
+    char file_name[NAME_SIZE] = {}, path_main[PATH_SIZE] = {}, path[PATH_SIZE] = {}, is_active = 0;
     struct fifo_free_ctx fifo_ctx = {};
 
     if(argc != 4)
@@ -257,6 +257,7 @@ int main(int argc, char *argv[])
 	{
 	    strftime(file_name, NAME_SIZE, "CAM_%Y-%m-%d_%H:%M:%S.ts", localtime(&t));
 	    strcpy(path, video_dir);
+	    strcat(path, "/../tmp/");
 	    strcat(path, file_name);
 
 	    myfile.open(path, ios::out | ios::binary);
@@ -271,6 +272,9 @@ int main(int argc, char *argv[])
 	{
 	    if (myfile.is_open())
 		myfile.close();
+	    strcpy(path_main, video_dir);
+	    strcat(path_main, file_name);
+	    rename(path, path_main);
 	    is_active = 0;
 	}
 	else if (GPIO_STAT && is_active)
