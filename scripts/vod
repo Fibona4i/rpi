@@ -101,11 +101,11 @@ video_sync(){
 }
 
 free_space(){
-	free_space=$(/bin/df -m / | /usr/bin/awk '{print $4}' | /bin/sed "1d")
+	free_space=$(df -m / | awk '{print $4}' | sed "1d")
 
         if [ $free_space -lt $FREE_SPACE_MIN ];
         then
-                /usr/bin/find $PATH_NAME_MAIN -name "CAM*.ts" | /usr/bin/sort -n | /usr/bin/head -n 5 | /usr/bin/xargs sudo /bin/rm -f
+                find $PATH_NAME_MAIN -name "CAM*.ts" | sort -n | head -n 5 | xargs sudo rm -f
         fi
 }
 
