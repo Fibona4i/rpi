@@ -21,12 +21,14 @@
 #define PATH_SIZE 128
 #define NAME_SIZE 64
 #define SEC_VIDEO_SIZE (1*1024*1024)
+#define SOUND_SCRIPT "play_sound.sh"
 
 #define debug_print(fmt, ...) \
 	do { if (DEBUG) fprintf(stderr, "%s:%d:%s(): " fmt, __FILE__, \
 		__LINE__, __func__, __VA_ARGS__); } while (0)
 
 static unsigned int GPIO_STAT = 0;
+static char WORK_DIR[PATH_SIZE] = {};
 
 enum ERROR_TYPE
 {
@@ -66,6 +68,23 @@ static int is_fifo(int file_fd)
     return 1;
 }
 
+static void play_sound(void)
+{
+    static char sound_path[PATH_SIZE] = {};
+
+    if (!fork())
+    {
+	if (!*sound_path)
+	{
+	    strcpy(sound_path, WORK_DIR);
+	    strcat(sound_path, SOUND_SCRIPT);
+	}
+	debug_print("exec %s\n", sound_path);
+	execl(sound_path, "", NULL);
+    	_exit(0);
+    }
+}
+
 void *gpio_read(void *data)
 {
     struct pollfd fds[1];
@@ -96,6 +115,8 @@ void *gpio_read(void *data)
 
 	    debug_print("gpio UP (%d)\n", 1);
             gpio_out->setval_gpio(HIGH);
+	    play_sound();
+	    usleep(100*1000);
         }
 	else if (inputstate == LOW && GPIO_STAT)
 	{
@@ -219,6 +240,9 @@ int main(int argc, char *argv[])
 	    first_vbuf = vbuf;
     }
     first_vbuf->next = vbuf;
+
+    strcpy(WORK_DIR, video_dir);
+    strcat(WORK_DIR, "../");
     
     while(1)
     {
@@ -256,8 +280,8 @@ int main(int argc, char *argv[])
 	if (GPIO_STAT && !is_active)
 	{
 	    strftime(file_name, NAME_SIZE, "CAM_%Y-%m-%d_%H:%M:%S.ts", localtime(&t));
-	    strcpy(path, video_dir);
-	    strcat(path, "/../tmp/");
+	    strcpy(path, WORK_DIR);
+	    strcat(path, "tmp/");
 	    strcat(path, file_name);
 
 	    myfile.open(path, ios::out | ios::binary);
