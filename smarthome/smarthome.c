@@ -13,6 +13,7 @@
 #include <fstream>
 #include "../sysfs_gpio/GPIOClass.h"
 #include "../sysfs_gpio/GPIORpi2.h"
+#include "log/log.h"
 
 #define DEBUG 0
 #define BUFFER 65536
@@ -85,6 +86,8 @@ static void play_sound(void)
     }
 }
 
+#define LOG_DIR "~/smart.log"
+
 void *gpio_read(void *data)
 {
     struct pollfd fds[1];
@@ -92,6 +95,7 @@ void *gpio_read(void *data)
     int timeout = -1;
     GPIOClass* gpio_in = new GPIOClass(RPI2_GPIO_11);
     GPIOClass* gpio_out = new GPIOClass(RPI2_GPIO_7); //added LED for testing only
+    class Log_mess log;
 
     gpio_in->setdir_gpio(GPIO_IN);
     gpio_in->setedge_gpio(GPIO_EDGE_RISING);
@@ -99,6 +103,8 @@ void *gpio_read(void *data)
 
     fds[0].fd = gpio_in->get_filefd();
     fds[0].events = POLLPRI;
+
+    log.log_open(LOG_DIR);
 
     while(1)
     {
@@ -116,6 +122,7 @@ void *gpio_read(void *data)
 	    debug_print("gpio UP (%d)\n", 1);
             gpio_out->setval_gpio(HIGH);
 	    play_sound();
+	    log.log_write("high gpio"); 
 	    usleep(100*1000);
         }
 	else if (inputstate == LOW && GPIO_STAT)
@@ -127,6 +134,8 @@ void *gpio_read(void *data)
             gpio_out->setval_gpio(LOW);
 	}
     }
+
+    //log.log_close();
 
     return NULL;
 }

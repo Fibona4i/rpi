@@ -1,5 +1,5 @@
 TARGET=smarthome
-OBJECTS=smarthome.o ../sysfs_gpio/GPIOClass.o
+OBJECTS=smarthome.o ../sysfs_gpio/GPIOClass.o log/log.o
 
 CC=g++
 CFLAGS=-Wall -Werror
