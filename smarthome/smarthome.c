@@ -86,7 +86,7 @@ static void play_sound(void)
     }
 }
 
-#define LOG_DIR "~/smart.log"
+#define LOG_DIR "/home/pi/smart.log"
 
 void *gpio_read(void *data)
 {
@@ -95,7 +95,7 @@ void *gpio_read(void *data)
     int timeout = -1;
     GPIOClass* gpio_in = new GPIOClass(RPI2_GPIO_11);
     GPIOClass* gpio_out = new GPIOClass(RPI2_GPIO_7); //added LED for testing only
-    class Log_mess log;
+    class Log_mess log(LOG_DIR);
 
     gpio_in->setdir_gpio(GPIO_IN);
     gpio_in->setedge_gpio(GPIO_EDGE_RISING);
@@ -104,7 +104,7 @@ void *gpio_read(void *data)
     fds[0].fd = gpio_in->get_filefd();
     fds[0].events = POLLPRI;
 
-    log.log_open(LOG_DIR);
+    log.log_open();
 
     while(1)
     {
