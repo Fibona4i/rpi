@@ -7,7 +7,7 @@ static string init_sound_cmd(void)
 	INIReader ini_file(ini_path(NULL));
 
 	if (ini_file.ParseError() < 0) {
-		cout << "Can't load config: " << ini_path(NULL) << endl;
+		cerr << LINE_INFO << "Can't load config: " << ini_path(NULL) << endl;
 		return NULL;
 	}
 
@@ -54,7 +54,7 @@ static int init_gpio(struct gpio_t *gpio)
 	INIReader ini_file(ini_path(NULL));
 
 	if (ini_file.ParseError() < 0) {
-		cout << "Can't load config: " << ini_path(NULL) << endl;
+		cerr << LINE_INFO << "Can't load config: " << ini_path(NULL) << endl;
 		return -1;
 	}
 
@@ -68,6 +68,10 @@ static int init_gpio(struct gpio_t *gpio)
 	gpio->fds_in.fd = gpio->gpio_in->get_filefd();
 	gpio->fds_in.events = POLLPRI;
 	gpio->timeout_def = ini_file.GetInteger("video", "duration_min", -1);
+	if (gpio->timeout_def < 0) {
+		cerr << LINE_INFO << "Can't read [video]:duration_min" << endl;
+		return -1;
+	}
 
 	return 0;
 }

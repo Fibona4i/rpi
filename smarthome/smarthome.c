@@ -122,7 +122,7 @@ static int read_def_path(struct vfifo_t *vfifo)
 
 	path_def = path_def_get();
 
-	tmp = ini_file.Get("path", "vscr", 0);
+	tmp = ini_file.Get("path", "vsrc", "");
 	if (tmp.empty()) {
 		cout << LINE_INFO << "Can't read [path]:vscr " << endl;
 		return -1;
@@ -172,12 +172,12 @@ static int init_vvals(struct vfifo_t *vfifo)
 		return -1;
 	}
 
-	vfifo->v_ctx.duration = ini_file.GetInteger("video", "preduf_time", -1);
+	vfifo->v_ctx.duration = ini_file.GetInteger("video", "prebuf_time", -1);
 	vfifo->v_ctx.sec_size = ini_file.GetInteger("video", "one_sec_size", -1);
 	vfifo->v_ctx.buf = new char(vfifo->fifo_ctx.pipe_size);
 	vfifo->fifo_ctx.pipe_size = fcntl(0, F_GETPIPE_SZ) + 1;
 
-	if (vfifo->fifo_ctx.pipe_size == -1 || vfifo->v_ctx.duration == -1 || vfifo->v_ctx.sec_size == -1 ||
+	if (vfifo->fifo_ctx.pipe_size < 0 || vfifo->v_ctx.duration < 0 || vfifo->v_ctx.sec_size < 0 ||
 		!vfifo->v_ctx.buf)
 	{
 		cerr << LINE_INFO << "Couldn't init def values" << endl;
@@ -315,6 +315,31 @@ static string get_time_str(void)
 	return buf;
 }
 
+static string get_video_dir_name(void)
+{
+	static string vdir = NULL;
+
+	if (vdir.empty())
+	{
+		INIReader ini_file(ini_path(NULL));
+
+		if (ini_file.ParseError() < 0) {
+			cout << LINE_INFO << "Can't load config: " << ini_path(NULL) << endl;
+			return NULL;
+		}
+
+		vdir = ini_file.Get("path", "vfolder", "");
+
+		if (vdir.empty())
+		{
+			cerr << LINE_INFO << "Couldn't read vfolder" << endl;
+			return NULL;
+		}
+	}
+
+	return vdir;
+}
+
 static void start_video_saving(struct ring_buf *vbuf, struct fsave_t *fsave, struct gpio_t *gpio)
 {
 	int i;
@@ -322,6 +347,7 @@ static void start_video_saving(struct ring_buf *vbuf, struct fsave_t *fsave, str
 	struct ring_buf *tmp_vbuf;
 
 	fsave->path_tmp = path_def_get() + "tmp/";
+	fsave->path = path_def_get() + get_video_dir_name();
 	fsave->name = get_time_str();
 	fsave_name = fsave->path_tmp + fsave->name;
 
