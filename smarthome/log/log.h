@@ -7,8 +7,6 @@
 #include <string.h>
 #include <time.h>
 
-using namespace std;
-
 class Log_mess {
 private:
 	string file_path;

@@ -1,3 +1,5 @@
+using namespace std;
+
 #include "log.h"
 
 Log_mess::Log_mess(string file) : file_path(file){}
@@ -11,9 +13,8 @@ string Log_mess::get_time(void)
 {
 	char buf[80];
 	time_t now = time(0);
-	struct tm tstruct = *localtime(&now);
 
-	strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
+	strftime(buf, sizeof(buf), "%Y-%m-%d.%X", localtime(&now));
 
 	return buf;
 }
@@ -26,7 +27,7 @@ int Log_mess::log_open(void)
 		return -1;
 	}
 
-	file.open(file_path.c_str(), std::ios::app);
+	file.open(file_path.c_str(), ios::app);
 	if (!file.is_open())
 	{
 		cerr << "Could not open log file: " << file_path << endl;
