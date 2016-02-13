@@ -25,7 +25,7 @@
 struct ring_buf {
 	char *head;
 	char *curr;
-	unsigned int full_size;
+	int full_size;
 	struct ring_buf *next;
 };
 

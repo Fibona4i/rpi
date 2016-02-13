@@ -460,9 +460,9 @@ int main(int argc, char *argv[])
 		goto Exit;
 		cerr << LINE_INFO << endl;
 
-	//if (gpio_thread_crate(&gpio))
-	//	goto Exit;
-	//	cerr << LINE_INFO << endl;
+	if (gpio_thread_crate(&gpio))
+		goto Exit;
+		cerr << LINE_INFO << endl;
 
 	if (clean_fifo_thread_crate(&vfifo.fifo_ctx))
 		goto Exit;
@@ -480,7 +480,7 @@ int main(int argc, char *argv[])
 
 		if (update_ring_buf(&vbuf, &vfifo))
 			goto Exit;
-/*		cerr << LINE_INFO << endl;
+		cerr << LINE_INFO << endl;
 		if (need_start_saving(&gpio))
 			start_video_saving(vbuf, &fsave, &gpio);
 		else if (need_stop_saving(&gpio))
@@ -488,7 +488,7 @@ int main(int argc, char *argv[])
 		else if (is_saving_in_progr(&gpio))
 			video_write(&fsave, &vfifo.v_ctx);
 		cerr << LINE_INFO << endl;
-*/
+
 	}
 
 Exit:

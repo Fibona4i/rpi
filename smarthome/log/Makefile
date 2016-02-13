@@ -1,12 +1,13 @@
 TARGET=log
 OBJECTS=log.o
 
-CC=g++
-CFLAGS=-Wall -Werror
+CXX=$(CROSS_COMPILE)g++
+LD=$(CROSS_COMPILE)ld
+CXXFLAGS=-Wall -Werror
 LDFLAGS=
 
 ${TARGET}: ${OBJECTS}
-	${CC} $^ ${LDFLAGS} -o $@
+	${CXX} $^ ${LDFLAGS} -o $@
 
 all: ${TARGET}
 clean:
