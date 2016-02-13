@@ -8,15 +8,15 @@ static string init_sound_cmd(void)
 
 	if (ini_file.ParseError() < 0) {
 		cerr << LINE_INFO << "Can't load config: " << ini_path(NULL) << endl;
-		return NULL;
+		return "";
 	}
 
-	return ini_file.Get("script", "play_sound", 0);
+	return ini_file.Get("script", "play_sound", "");
 }
 
 static void play_sound(void)
 {
-	static string cmd = NULL;
+	static string cmd = "";
 
 	if (cmd.empty())
 	{
