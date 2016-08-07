@@ -3,7 +3,7 @@ OBJECTS=smarthome.o gpio.o ../sysfs_gpio/GPIOClass.o log/log.o ../ini_parser/ini
 
 CXX=$(CROSS_COMPILE)g++
 LD=$(CROSS_COMPILE)ld
-CXXFLAGS=-Wall -Werror
+CXXFLAGS=-Wall #-Werror
 LDFLAGS=-lpthread
 
 ${TARGET}: ${OBJECTS}

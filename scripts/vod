@@ -45,13 +45,12 @@ check_vod_status(){
 }
 
 create_fifo(){
-	rm $SRC_NAME $DST_NAME
+	sudo rm $SRC_NAME $DST_NAME
 	mkfifo $SRC_NAME $DST_NAME
 }
 
 is_files_exists(){
-	if [ -a "$SRC_NAME" ] && [ -a "$DST_NAME" ] && [ -a "$PROG_MAIN" ] && [ -a "$VIDEO_DIR" ] && [ -a "$CAM" ] \
-		&& [ -a "$RTSP_SERVER" ] && [ -a "$TMP_DIR" ] ;
+	if [ -a "$PROG_MAIN" ] && [ -a "$VIDEO_DIR" ] && [ -a "$CAM" ] && [ -a "$RTSP_SERVER" ] && [ -a "$TMP_DIR" ] ;
 	then
 		return 1
 	else
@@ -60,8 +59,8 @@ is_files_exists(){
 }
 
 start_gst(){
-	create_fifo
-	#mkdir $VIDEO_DIR $TMP_DIR
+	#create_fifo
+	mkdir $VIDEO_DIR $TMP_DIR
 	if is_files_exists ;
 	then
 		echo "ERROR! Some files don't exists"
@@ -70,9 +69,9 @@ start_gst(){
 	#$PROG_MAIN $VIDEO_DIR $SRC_NAME $DST_NAME > /dev/null 2>&1 &
 	$PROG_MAIN /home/pi/smart/config.ini &
 	gst-launch-1.0 v4l2src device=$CAM ! 'video/x-raw,width=640,height=480,framerate=15/1' ! clockoverlay time-format="%Y/%m/%d %H:%M:%S" ! omxh264enc target-bitrate=1024000 control-rate=3 interval-intraframes=7 ! muxout. alsasrc device=hw:1,0 ! 'audio/x-raw,format=(string)S16LE,rate=(int)16000,channels=(int)1' ! queue ! audioconvert ! voaacenc bitrate=32273 ! aacparse ! muxout. mpegtsmux name=muxout ! queue ! filesink location=$SRC_NAME &
-	sleep 0.5
-	$RTSP_SERVER > /dev/null 2>&1 &
-	sleep 0.5
+	#sleep 0.5
+	$RTSP_SERVER &#> /dev/null 2>&1 &
+	#sleep 0.5
 }
 
 stop_gst(){
@@ -84,7 +83,7 @@ stop_gst(){
 		sudo killall testOnDemandRTSPServer gst-launch-1.0 smarthome
 		sleep 1
 	fi
-	rm $SRC_NAME $DST_NAME
+	#sudo rm $SRC_NAME $DST_NAME
 
 	pid_video_sync=`ps aux | grep dropbox_uploader.sh | grep -v "grep" | grep -v vlc. | awk '{print $2}'`
 	sudo kill -9 `echo $pid_video_sync`

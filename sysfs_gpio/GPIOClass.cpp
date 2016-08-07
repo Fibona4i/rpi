@@ -53,9 +53,11 @@ int GPIOClass::export_gpio()
         	exit(1);
 	}
 
+	usleep(1*1000*1000); //wait for creating virtual gpio file. Why 1 sec?
 	this->valuefd = statusVal = open(ValStr.c_str(), O_RDWR|O_SYNC);
 	if (statusVal < 0){
-		perror("could not open SYSFS GPIO value device");
+		cerr << "error: " << ValStr.c_str() << endl;
+		perror("Could not open SYSFS GPIO value device");
         	exit(1);
 	}
 

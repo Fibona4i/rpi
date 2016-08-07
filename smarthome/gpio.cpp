@@ -2,36 +2,48 @@ using namespace std;
 
 #include "smarthome.h"
 
-static string init_sound_cmd(void)
+static int init_player_cmd(char *line, char **argv)
 {
+	string cmd;
 	INIReader ini_file(ini_path(NULL));
 
 	if (ini_file.ParseError() < 0) {
 		cerr << LINE_INFO << "Can't load config: " << ini_path(NULL) << endl;
-		return "";
+		return -1;
 	}
 
-	return ini_file.Get("script", "play_sound", "");
+	cmd = ini_file.Get("script", "player", "");
+	memcpy(line, cmd.c_str(), cmd.size());
+	line[cmd.size()] = '\0';
+
+	parse_cmd(line, argv);
+
+	return 0;
 }
 
 static void play_sound(void)
 {
-	static string cmd = "";
+	static char  *argv[64], line[1024] = {};
+	static pid_t pid = -1;
 
-	if (cmd.empty())
+	if (!line[0])
 	{
-		if ((cmd = init_sound_cmd()).empty())
+		if (init_player_cmd(line, argv))
 		{
-			cerr << LINE_INFO << "Couldn't read play sound command" << endl;
+			cerr << LINE_INFO << "Couldn't read play command" << endl;
 			exit(1);
 		}
 	}
 
-	if (!fork())
+	cerr << pid << endl;
+	if (pid >= 0 && !kill(pid, 0))
+	    return;//kill(pid, SIGKILL);
+
+	if (!(pid = fork()))
 	{
-		debug("exec " << cmd);
-		execl(cmd.c_str(), "", NULL);
-		_exit(0);
+		if (execvp(*argv, argv) < 0)
+			perror("play_sound(): failure");
+		exit(1);
 	}
 }
 
@@ -67,9 +79,9 @@ static int init_gpio(struct gpio_t *gpio)
 
 	gpio->fds_in.fd = gpio->gpio_in->get_filefd();
 	gpio->fds_in.events = POLLPRI;
-	gpio->timeout_def = ini_file.GetInteger("video", "duration_min", -1);
+	gpio->timeout_def = ini_file.GetInteger("gpio", "high_timeout", -1);
 	if (gpio->timeout_def < 0) {
-		cerr << LINE_INFO << "Can't read [video]:duration_min" << endl;
+		cerr << LINE_INFO << "Can't read [gpio]:high_timeout" << endl;
 		return -1;
 	}
 
@@ -86,12 +98,12 @@ static int need_set_low(struct gpio_t *gpio)
 	return gpio->in_stat == LOW && gpio->stat;
 }
 
-static int set_high(struct gpio_t *gpio)
+static int set_gpio(struct gpio_t *gpio, int is_high)
 {
-	gpio->stat = 1;
-	gpio->timeout = gpio->timeout_def;
+	gpio->stat = is_high;
+	gpio->timeout = is_high ? gpio->timeout_def : -1;
 
-	gpio->gpio_out->setval_gpio(HIGH);
+	gpio->gpio_out->setval_gpio(is_high ? HIGH : LOW);
 
 	return 0;
 }
@@ -115,40 +127,36 @@ static int alarms_low(void *e)
 	return 0;
 }
 
-static int set_low(struct gpio_t *gpio)
-{
-	gpio->stat = 0;
-	gpio->timeout = -1;
-
-	gpio->gpio_out->setval_gpio(LOW);
-
-	return 0;
-}
-
 void *gpio_read(void *data)
 {
+	time_t last_change_time;
 	struct gpio_t *gpio = (struct gpio_t *)data;
-	class Log_mess log((path_def_get() + "log.txt").c_str());
+	class Log_mess log((current_path_get() + "log.txt").c_str());
+
 	log.log_open();
 
-	init_gpio(gpio);
+	if (init_gpio(gpio))
+		exit(1);
+
+	last_change_time = time(NULL) - gpio->timeout_def;
 
 	while(1)
 	{
 		if (read_gpio(gpio))
 			exit(1);
 
-		if (need_set_high(gpio))
+		if (need_set_high(gpio) && (time(NULL) - last_change_time) > gpio->timeout_def)
 		{
-			set_high(gpio);
+			last_change_time = time(NULL);
+			set_gpio(gpio, 1);
 			alarms_high(&log);
-			usleep(100*1000);
 		}
 		else if (need_set_low(gpio))
 		{
-			set_low(gpio);
+			set_gpio(gpio, 0);
 			alarms_low(NULL);
 		}
+		usleep(100*1000);
 	}
 
 	return NULL;
