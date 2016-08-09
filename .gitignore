@@ -1,5 +1,7 @@
 # Can ignore specific files
 .DS_Store
+cscope.*
+1
 
 # Use wildcards as well
 *~
