@@ -128,10 +128,34 @@ void parse_cmd(char *line, char **argv)
 	*argv = NULL;                   /* mark the end of argument list  */
 }
 
+static int fork_cli_cmd(pid_t *pid, string &cmd)
+{
+	char  *argv[64], line[1024];
+
+	if (!(*pid = fork()))
+	{
+		debug("exec " << cmd);
+		memcpy(line, cmd.c_str(), cmd.size());
+		line[cmd.size()] = '\0';
+
+		parse_cmd(line, argv);
+		if (execvp(*argv, argv) < 0)
+			perror("ERROR: system failure");
+		exit(1);
+	}
+
+	if (*pid == -1)
+	{
+		cerr << LINE_INFO << "Couldn't fork: " << cmd << endl;
+		return -1;
+	}
+
+	return 0;
+}
+
 static int init_video_cam(pid_t *encoder_pid, pid_t *streamer_pid)
 {
 	static string encoder, streamer;
-	char  *argv[64], line[1024];
 	INIReader ini_file(ini_path(NULL));
 
 	if (ini_file.ParseError() < 0) {
@@ -149,37 +173,7 @@ static int init_video_cam(pid_t *encoder_pid, pid_t *streamer_pid)
 		return -1;
 	}
 
-	if (!(*encoder_pid = fork()))
-	{
-		debug("exec " << encoder);
-		memcpy(line, encoder.c_str(), encoder.size());
-		line[encoder.size()] = '\0';
-
-		parse_cmd(line, argv);
-		if (execvp(*argv, argv) < 0)
-			perror("system(encoder) failure");
-		exit(1);
-	}
-
-	if (!(*streamer_pid = fork()))
-	{
-		debug("exec " << streamer);
-		memcpy(line, streamer.c_str(), streamer.size());
-		line[streamer.size()] = '\0';
-
-		parse_cmd(line, argv);
-		if (execvp(*argv, argv) < 0)
-			perror("system(streamer) failure");
-		exit(1);
-	}
-
-	if (*encoder_pid == -1 || *streamer_pid == -1)
-	{
-		cerr << LINE_INFO << "Couldn't run encoder or streamer" << endl;
-		return -1;
-	}
-
-	return 0;
+	return fork_cli_cmd(encoder_pid, encoder) || fork_cli_cmd(streamer_pid, streamer);
 }
 
 static void uninit(struct gpio_t *gpio)
