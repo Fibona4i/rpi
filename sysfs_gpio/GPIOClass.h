@@ -3,15 +3,11 @@
 #define GPIO_CLASS_H
 
 #include <string>
-#include <iostream>
-#include <sstream>
 #include <unistd.h>
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include "../smarthome/common.h"
 
 using namespace std;
 
@@ -21,8 +17,8 @@ using namespace std;
 #define GPIO_EDGE_RISING "rising"
 #define GPIO_EDGE_FALLING "falling"
 #define GPIO_EDGE_BOTH "both"
-#define HIGH "1"
-#define LOW "0"
+#define GPIO_HIGH "1"
+#define GPIO_LOW "0"
 
 /* GPIO Class
  * Purpose: Each object instatiated from this class will control a GPIO pin
@@ -32,23 +28,23 @@ class GPIOClass
 {
 public:
     GPIOClass();
-    GPIOClass(string gnum);
+    GPIOClass(int gpio);
     ~GPIOClass();
-    int setdir_gpio(string dir);
-    int setedge_gpio(string dir);
-    int setval_gpio(string val);
-    int getval_gpio(string& val);
-    string get_gpionum();
+    void set_gpio_direction(string dir);
+    void set_gpio_edge(string dir);
+    void set_gpio_value(string val);
+    bool get_gpio_value();
+    int get_gpionum();
     int get_filefd();
 private:
-    int export_gpio();
-    int unexport_gpio();
+    void export_gpio();
+    void unexport_gpio();
 
     int valuefd;
     int directionfd;
     int exportfd;
     int unexportfd;
-    string gpionum;
+    int gpionum;
 };
 
 #endif

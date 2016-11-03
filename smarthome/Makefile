@@ -1,5 +1,5 @@
 TARGET=smarthome
-OBJECTS=smarthome.o gpio.o ../sysfs_gpio/GPIOClass.o log/log.o ../ini_parser/ini.o ../ini_parser/INIReader.o
+OBJECTS=smarthome.o gpio.o common.o ../sysfs_gpio/GPIOClass.o log/log.o ../ini_parser/ini.o ../ini_parser/INIReader.o
 
 CXX=$(CROSS_COMPILE)g++
 LD=$(CROSS_COMPILE)ld

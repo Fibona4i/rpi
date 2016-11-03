@@ -1,23 +1,23 @@
 #ifndef RPI2_PIN_H
 #define RPI2_PIN_H
 
-#define RPI2_PIN_3	"2"
-#define RPI2_PIN_5	"3"
-#define RPI2_PIN_7	"4"
-#define RPI2_PIN_8	"14"
-#define RPI2_PIN_10	"15"
-#define RPI2_PIN_11	"17"
-#define RPI2_PIN_12	"18"
-#define RPI2_PIN_13	"27"
-#define RPI2_PIN_15	"22"
-#define RPI2_PIN_16	"23"
-#define RPI2_PIN_18	"24"
-#define RPI2_PIN_19	"10"
-#define RPI2_PIN_21	"9"
-#define RPI2_PIN_22	"25"
-#define RPI2_PIN_23	"11"
-#define RPI2_PIN_24	"8"
-#define RPI2_PIN_26	"7"
+#define RPI2_PIN_3  2
+#define RPI2_PIN_5  3
+#define RPI2_PIN_7  4
+#define RPI2_PIN_8  14
+#define RPI2_PIN_10 15
+#define RPI2_PIN_11 17
+#define RPI2_PIN_12 18
+#define RPI2_PIN_13 27
+#define RPI2_PIN_15 22
+#define RPI2_PIN_16 23
+#define RPI2_PIN_18 24
+#define RPI2_PIN_19 10
+#define RPI2_PIN_21 9
+#define RPI2_PIN_22 25
+#define RPI2_PIN_23 11
+#define RPI2_PIN_24 8
+#define RPI2_PIN_26 7
 
 
 /* RPI 2 pinmap

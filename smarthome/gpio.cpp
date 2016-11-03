@@ -55,7 +55,7 @@ static int read_gpio(struct gpio_t *gpio)
 		return -1;
 	}
 
-	gpio->gpio_in->getval_gpio(gpio->in_stat);
+	gpio->in_stat = gpio->gpio_in->get_gpio_value();
 	lseek(gpio->fds_in.fd, 0, SEEK_SET);
 
 	return 0;
@@ -70,12 +70,12 @@ static int init_gpio(struct gpio_t *gpio)
 		return -1;
 	}
 
-	gpio->gpio_in = new GPIOClass(RPI2_GPIO_11);
-	gpio->gpio_in->setdir_gpio(GPIO_IN);
-	gpio->gpio_in->setedge_gpio(GPIO_EDGE_RISING);
+	gpio->gpio_in = new GPIOClass(RPI2_PIN_11);
+	gpio->gpio_in->set_gpio_direction(GPIO_IN);
+	gpio->gpio_in->set_gpio_edge(GPIO_EDGE_RISING);
 
-	gpio->gpio_out = new GPIOClass(RPI2_GPIO_7); //added LED for testing only
-	gpio->gpio_out->setdir_gpio(GPIO_OUT);
+	gpio->gpio_out = new GPIOClass(RPI2_PIN_7); //added LED for testing only
+	gpio->gpio_out->set_gpio_direction(GPIO_OUT);
 
 	gpio->fds_in.fd = gpio->gpio_in->get_filefd();
 	gpio->fds_in.events = POLLPRI;
@@ -90,12 +90,12 @@ static int init_gpio(struct gpio_t *gpio)
 
 static int need_set_high(struct gpio_t *gpio)
 {
-	return gpio->in_stat == HIGH && !gpio->stat;
+	return gpio->in_stat && !gpio->stat;
 }
 
 static int need_set_low(struct gpio_t *gpio)
 {
-	return gpio->in_stat == LOW && gpio->stat;
+	return !gpio->in_stat && gpio->stat;
 }
 
 static int set_gpio(struct gpio_t *gpio, int is_high)
@@ -103,7 +103,7 @@ static int set_gpio(struct gpio_t *gpio, int is_high)
 	gpio->stat = is_high;
 	gpio->timeout = is_high ? gpio->timeout_def : -1;
 
-	gpio->gpio_out->setval_gpio(is_high ? HIGH : LOW);
+	gpio->gpio_out->set_gpio_value(is_high ? GPIO_HIGH : GPIO_LOW);
 
 	return 0;
 }

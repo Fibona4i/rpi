@@ -27,7 +27,7 @@ struct gpio_t {
 	int stat; //configured state of gpio_in
 	int timeout; //configured timeout
 	int timeout_def; //default timeout (config file)
-	string in_stat; //current real grio status
+	bool in_stat; //current real grio status
 	GPIOClass *gpio_in;
 	GPIOClass *gpio_out;
 	struct pollfd fds_in;
