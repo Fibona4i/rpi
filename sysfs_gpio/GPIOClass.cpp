@@ -4,14 +4,10 @@ using namespace std;
 
 bool wait_for_gpio(string file, int msec)
 {
-	while (msec--)
-	{
-		if (exist(file))
-			break;
+	while (!exist(file) && --msec)
 		usleep(1000);
-	}
 
-	return !exist(file);
+	return !msec;
 }
 
 GPIOClass::GPIOClass():valuefd(-1),directionfd(-1),exportfd(-1),unexportfd(-1),gpionum(-1)
