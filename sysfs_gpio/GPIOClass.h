@@ -27,24 +27,22 @@ using namespace std;
 class GPIOClass
 {
 public:
-    GPIOClass();
-    GPIOClass(int gpio);
+    GPIOClass(int gpio, string in_out);
+    GPIOClass(int gpio, string in_out, string edge);
     ~GPIOClass();
+
+    int get_gpio();
+    int get_gpio_fd();
+    bool get_gpio_value();
+    void set_gpio_value(int val);
+private:
+    int gpio;
+    int gpio_fd;
+
     void set_gpio_direction(string dir);
     void set_gpio_edge(string dir);
-    void set_gpio_value(string val);
-    bool get_gpio_value();
-    int get_gpionum();
-    int get_filefd();
-private:
     void export_gpio();
     void unexport_gpio();
-
-    int valuefd;
-    int directionfd;
-    int exportfd;
-    int unexportfd;
-    int gpionum;
 };
 
 #endif

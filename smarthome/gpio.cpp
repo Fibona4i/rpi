@@ -70,14 +70,10 @@ static int init_gpio(struct gpio_t *gpio)
 		return -1;
 	}
 
-	gpio->gpio_in = new GPIOClass(RPI2_PIN_11);
-	gpio->gpio_in->set_gpio_direction(GPIO_IN);
-	gpio->gpio_in->set_gpio_edge(GPIO_EDGE_RISING);
+	gpio->gpio_in = new GPIOClass(RPI2_PIN_11, GPIO_IN);
+	gpio->gpio_out = new GPIOClass(RPI2_PIN_7, GPIO_OUT); //added LED for testing only
 
-	gpio->gpio_out = new GPIOClass(RPI2_PIN_7); //added LED for testing only
-	gpio->gpio_out->set_gpio_direction(GPIO_OUT);
-
-	gpio->fds_in.fd = gpio->gpio_in->get_filefd();
+	gpio->fds_in.fd = gpio->gpio_in->get_gpio_fd();
 	gpio->fds_in.events = POLLPRI;
 	gpio->timeout_def = ini_file.GetInteger("gpio", "high_timeout", -1);
 	if (gpio->timeout_def < 0) {
@@ -103,7 +99,7 @@ static int set_gpio(struct gpio_t *gpio, int is_high)
 	gpio->stat = is_high;
 	gpio->timeout = is_high ? gpio->timeout_def : -1;
 
-	gpio->gpio_out->set_gpio_value(is_high ? GPIO_HIGH : GPIO_LOW);
+	gpio->gpio_out->set_gpio_value(is_high);
 
 	return 0;
 }
